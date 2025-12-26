@@ -25,6 +25,12 @@ LIVE_STREAM_URL = os.getenv("LIVE_STREAM_URL", "https://www.youtube.com/live/iOn
 # Диагностика для Railway
 print("🔍 Проверка переменных окружения:")
 print(f"TELEGRAM_BOT_TOKEN установлен: {'✅' if TELEGRAM_BOT_TOKEN else '❌'}")
+if TELEGRAM_BOT_TOKEN:
+    # Показываем первые и последние символы для проверки формата
+    token_preview = f"{TELEGRAM_BOT_TOKEN[:10]}...{TELEGRAM_BOT_TOKEN[-10:]}"
+    print(f"  Формат токена: {token_preview}")
+    print(f"  Длина токена: {len(TELEGRAM_BOT_TOKEN)} символов")
+    print(f"  Содержит ':' : {'✅' if ':' in TELEGRAM_BOT_TOKEN else '❌ ОШИБКА - должна быть двоеточие!'}")
 print(f"OPENROUTER_API_KEY установлен: {'✅' if OPENROUTER_API_KEY else '❌'}")
 print(f"LIVE_STREAM_URL: {LIVE_STREAM_URL}")
 
