@@ -1,16 +1,19 @@
 """Проверка статуса Telegram бота."""
 import os
+import sys
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 if not TELEGRAM_BOT_TOKEN:
-    print("❌ TELEGRAM_BOT_TOKEN не установлен!")
-    print("Введите токен вручную:")
-    TELEGRAM_BOT_TOKEN = input("Token: ").strip()
+    if len(sys.argv) > 1:
+        TELEGRAM_BOT_TOKEN = sys.argv[1]
+    else:
+        print("❌ TELEGRAM_BOT_TOKEN не установлен в переменных окружения!")
+        print("\nИспользование:")
+        print("  python check_bot_status.py <BOT_TOKEN>")
+        print("или установите переменную TELEGRAM_BOT_TOKEN")
+        sys.exit(1)
 
 # Проверяем информацию о боте
 url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe"
