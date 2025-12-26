@@ -23,9 +23,9 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 LIVE_STREAM_URL = os.getenv("LIVE_STREAM_URL", "https://www.youtube.com/live/iOnk4zozyw8?si=qByw0py3KYdjAIji")
 
 if not TELEGRAM_BOT_TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN не установлен в .env файле")
+    raise ValueError("TELEGRAM_BOT_TOKEN не установлен в переменных окружения")
 if not OPENROUTER_API_KEY:
-    raise ValueError("OPENROUTER_API_KEY не установлен в .env файле")
+    raise ValueError("OPENROUTER_API_KEY не установлен в переменных окружения")
 
 # Инициализируем бот и диспетчер
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
