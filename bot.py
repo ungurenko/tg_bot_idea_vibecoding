@@ -22,9 +22,26 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 LIVE_STREAM_URL = os.getenv("LIVE_STREAM_URL", "https://www.youtube.com/live/iOnk4zozyw8?si=qByw0py3KYdjAIji")
 
+# Диагностика для Railway
+print("🔍 Проверка переменных окружения:")
+print(f"TELEGRAM_BOT_TOKEN установлен: {'✅' if TELEGRAM_BOT_TOKEN else '❌'}")
+print(f"OPENROUTER_API_KEY установлен: {'✅' if OPENROUTER_API_KEY else '❌'}")
+print(f"LIVE_STREAM_URL: {LIVE_STREAM_URL}")
+
 if not TELEGRAM_BOT_TOKEN:
+    print("❌ Ошибка: TELEGRAM_BOT_TOKEN не найден!")
+    print("Доступные переменные окружения (начинающиеся с TELEGRAM):")
+    for key in os.environ:
+        if 'TELEGRAM' in key.upper():
+            print(f"  - {key}")
     raise ValueError("TELEGRAM_BOT_TOKEN не установлен в переменных окружения")
+
 if not OPENROUTER_API_KEY:
+    print("❌ Ошибка: OPENROUTER_API_KEY не найден!")
+    print("Доступные переменные окружения (начинающиеся с OPENROUTER):")
+    for key in os.environ:
+        if 'OPENROUTER' in key.upper():
+            print(f"  - {key}")
     raise ValueError("OPENROUTER_API_KEY не установлен в переменных окружения")
 
 # Инициализируем бот и диспетчер
