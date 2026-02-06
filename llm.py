@@ -23,7 +23,7 @@ class OpenRouterClient:
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
         self.model = "x-ai/grok-4.1-fast"
-        self.timeout = 30.0
+        self.timeout = 120.0
 
     async def get_response(self, user_message: str, history: List[Dict[str, str]] = None) -> str:
         """
@@ -56,7 +56,7 @@ class OpenRouterClient:
             "model": self.model,
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": 1000
+            "max_tokens": 4000
         }
 
         headers = {
