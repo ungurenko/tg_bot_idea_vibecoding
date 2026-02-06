@@ -236,7 +236,7 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
                 reply_markup=create_vibes_button()
             )
             # 4. Ссылка на стрим через 60 сек
-            asyncio.create_task(send_live_stream_link(message.chat.id, delay_seconds=60))
+            asyncio.create_task(send_live_stream_link(message.chat.id, delay_seconds=3600))
         else:
             await message.answer(response, parse_mode="HTML")
 
