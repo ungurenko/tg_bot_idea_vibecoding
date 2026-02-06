@@ -1,6 +1,7 @@
 """Основной файл Telegram-бота для генерации идей вайб-кодинга."""
 
 import asyncio
+import logging
 import os
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -13,6 +14,12 @@ from dotenv import load_dotenv
 from llm import OpenRouterClient, LLMError
 from logger import log_conversation
 
+# Логгер ошибок в файл (для отладки на сервере: cat logs/errors.log)
+error_logger = logging.getLogger("error_debug")
+error_logger.setLevel(logging.ERROR)
+_err_handler = logging.FileHandler("logs/errors.log", encoding="utf-8")
+_err_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s"))
+error_logger.addHandler(_err_handler)
 
 # Загружаем переменные окружения
 load_dotenv()
@@ -185,11 +192,8 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
         )
     except Exception as e:
         await thinking_msg.delete()
-        print(f"❌ LLM Error (callback): {type(e).__name__}: {e}")
-        if "429" in str(e):
-            error_message = "<b>Упс, слишком много запросов!</b> Подожди минутку и попробуй снова ⏱️"
-        else:
-            error_message = "<b>Что-то пошло не так</b>, попробуй ещё раз через минуту 🔄"
+        error_logger.error(f"callback: {type(e).__name__}: {e}")
+        error_message = f"<b>Ошибка:</b> {type(e).__name__}: {e}"
         await callback.message.answer(error_message, parse_mode="HTML")
 
 
@@ -273,11 +277,8 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
 
     except Exception as e:
         await thinking_msg.delete()
-        print(f"❌ LLM Error (message): {type(e).__name__}: {e}")
-        if "429" in str(e):
-            error_message = "<b>Упс, слишком много запросов!</b> Подожди минутку и попробуй снова ⏱️"
-        else:
-            error_message = "<b>Что-то пошло не так</b>, попробуй ещё раз через минуту 🔄"
+        error_logger.error(f"message: {type(e).__name__}: {e}")
+        error_message = f"<b>Ошибка:</b> {type(e).__name__}: {e}"
 
         await message.answer(error_message, parse_mode="HTML")
 
