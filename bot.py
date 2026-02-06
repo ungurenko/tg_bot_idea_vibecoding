@@ -193,8 +193,10 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
     except Exception as e:
         await thinking_msg.delete()
         error_logger.error(f"callback: {type(e).__name__}: {e}")
-        error_message = f"<b>Ошибка:</b> {type(e).__name__}: {e}"
-        await callback.message.answer(error_message, parse_mode="HTML")
+        await callback.message.answer(
+            "Произошла ошибка при генерации ответа. Попробуйте ещё раз.",
+            parse_mode="HTML"
+        )
 
 
 @dp.message(F.text)
@@ -278,9 +280,11 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
     except Exception as e:
         await thinking_msg.delete()
         error_logger.error(f"message: {type(e).__name__}: {e}")
-        error_message = f"<b>Ошибка:</b> {type(e).__name__}: {e}"
 
-        await message.answer(error_message, parse_mode="HTML")
+        await message.answer(
+            "Произошла ошибка при генерации ответа. Попробуйте ещё раз.",
+            parse_mode="HTML"
+        )
 
         # Логируем ошибку
         log_conversation(

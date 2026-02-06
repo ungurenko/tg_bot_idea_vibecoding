@@ -22,7 +22,7 @@ class OpenRouterClient:
         """
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model = "x-ai/grok-4.1-fast"
+        self.model = "openrouter/pony-alpha"
         self.timeout = 120.0
 
     async def get_response(self, user_message: str, history: List[Dict[str, str]] = None) -> str:
@@ -84,7 +84,8 @@ class OpenRouterClient:
         except httpx.TimeoutException:
             raise LLMError("Превышено время ожидания ответа от LLM")
         except httpx.HTTPStatusError as e:
-            raise LLMError(f"HTTP ошибка: {e.response.status_code}")
+            body = e.response.text[:200]
+            raise LLMError(f"HTTP {e.response.status_code}: {body}")
         except httpx.RequestError as e:
             raise LLMError(f"Ошибка соединения: {str(e)}")
         except Exception as e:
