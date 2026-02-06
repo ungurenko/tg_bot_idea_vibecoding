@@ -153,18 +153,24 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
     data = await state.get_data()
     history = data.get("history", [])
 
+    thinking_msg = await callback.message.answer(
+        "Так, тут нужно <i>подумать</i>, дай мне немного времени... 🤔",
+        parse_mode="HTML"
+    )
+
     try:
-        thinking_msg = await callback.message.answer(
-            "Так, тут нужно <i>подумать</i>, дай мне немного времени... 🤔",
-            parse_mode="HTML"
-        )
         await callback.message.bot.send_chat_action(
             chat_id=callback.message.chat.id, action="typing"
         )
 
         response = await llm_client.get_response(user_message, history)
         await thinking_msg.delete()
-        await callback.message.answer(response, parse_mode="HTML")
+
+        # Пробуем отправить с HTML, если не получится — без разметки
+        try:
+            await callback.message.answer(response, parse_mode="HTML")
+        except Exception:
+            await callback.message.answer(response)
 
         # Обновляем историю
         history.append({"role": "user", "content": user_message})
@@ -177,7 +183,8 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
             message=user_message,
             response=response
         )
-    except LLMError as e:
+    except Exception as e:
+        await thinking_msg.delete()
         if "429" in str(e):
             error_message = "<b>Упс, слишком много запросов!</b> Подожди минутку и попробуй снова ⏱️"
         else:
@@ -200,13 +207,13 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
     data = await state.get_data()
     history = data.get("history", [])
 
-    try:
-        # Отправляем сообщение "думаю..."
-        thinking_msg = await message.answer(
-            "Так, тут нужно <i>подумать</i>, дай мне немного времени... 🤔",
-            parse_mode="HTML"
-        )
+    # Отправляем сообщение "думаю..."
+    thinking_msg = await message.answer(
+        "Так, тут нужно <i>подумать</i>, дай мне немного времени... 🤔",
+        parse_mode="HTML"
+    )
 
+    try:
         # Отправляем индикатор набора текста
         await message.bot.send_chat_action(
             chat_id=message.chat.id,
@@ -226,19 +233,27 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
             photo = FSInputFile(photo_path)
             await message.answer_photo(photo=photo)
             # 2. Текст идей с кнопками выбора 💡
-            await message.answer(
-                response, parse_mode="HTML",
-                reply_markup=create_idea_buttons()
-            )
+            try:
+                await message.answer(
+                    response, parse_mode="HTML",
+                    reply_markup=create_idea_buttons()
+                )
+            except Exception:
+                await message.answer(
+                    response, reply_markup=create_idea_buttons()
+                )
             # 3. Продающий блок — отдельное сообщение
             await message.answer(
                 VIBES_SALES_TEXT, parse_mode="HTML",
                 reply_markup=create_vibes_button()
             )
-            # 4. Ссылка на стрим через 60 сек
+            # 4. Ссылка на стрим через 1 час
             asyncio.create_task(send_live_stream_link(message.chat.id, delay_seconds=3600))
         else:
-            await message.answer(response, parse_mode="HTML")
+            try:
+                await message.answer(response, parse_mode="HTML")
+            except Exception:
+                await message.answer(response)
 
         # Обновляем историю диалога
         history.append({"role": "user", "content": user_message})
@@ -255,8 +270,8 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
             response=response
         )
 
-    except LLMError as e:
-        # Проверяем тип ошибки для более точного сообщения
+    except Exception as e:
+        await thinking_msg.delete()
         if "429" in str(e):
             error_message = "<b>Упс, слишком много запросов!</b> Подожди минутку и попробуй снова ⏱️"
         else:
