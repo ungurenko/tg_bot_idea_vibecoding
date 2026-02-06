@@ -59,18 +59,34 @@ class ConversationState(StatesGroup):
 
 
 def create_vibes_button() -> InlineKeyboardMarkup:
-    """
-    Создаёт кнопку со ссылкой на обучение ВАЙБС.
-
-    Returns:
-        InlineKeyboardMarkup с кнопкой
-    """
+    """Создаёт кнопку со ссылкой на обучение ВАЙБС."""
     button = InlineKeyboardButton(
         text="🚀 Узнать про ВАЙБС",
         url="https://vibes-landing-gamma.vercel.app/"
     )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button]])
-    return keyboard
+    return InlineKeyboardMarkup(inline_keyboard=[[button]])
+
+
+def create_idea_buttons(count: int = 4) -> InlineKeyboardMarkup:
+    """Создаёт кнопки выбора идей 💡 1-N."""
+    buttons = [
+        InlineKeyboardButton(text=f"💡 {i}", callback_data=f"idea_{i}")
+        for i in range(1, count + 1)
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=[buttons])
+
+
+VIBES_SALES_TEXT = (
+    "🚀 <b>Хочешь реализовать одну из этих идей?</b>\n\n"
+    "На курсе <b>ВАЙБС</b> ты за 4 недели создашь свой проект "
+    "— с нуля до работающего продукта. Без кода, без программиста.\n\n"
+    "Ученица курса: <i>«То, чему учит Александр — это фантастика "
+    "и реальный взрыв мозга от открывающихся возможностей. "
+    "Если вы далеки от кода, без наставника шансов освоить даже "
+    "вайб-кодинг крайне мало»</i>\n\n"
+    "🔥 Старт ближайшего потока — <b>21 февраля</b>. "
+    "Всего 20 мест, 5 уже занято."
+)
 
 
 async def send_live_stream_link(chat_id: int, delay_seconds: int = 60) -> None:
@@ -84,8 +100,10 @@ async def send_live_stream_link(chat_id: int, delay_seconds: int = 60) -> None:
     await asyncio.sleep(delay_seconds)
     
     message = (
-        "🎓 Хочешь научиться вайб-кодингу бесплатно?\n\n"
-        "Заглядывай на мой прямой эфир — там я показываю всё на практике и помогаю разобраться!\n\n"
+        "Кстати! Если хочешь посмотреть, как создаются такие проекты "
+        "в реальном времени — заглядывай на мой прямой эфир.\n\n"
+        "Там я показываю весь процесс вайб-кодинга на практике "
+        "и отвечаю на вопросы.\n\n"
         f"▶️ {LIVE_STREAM_URL}"
     )
     
@@ -106,8 +124,10 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     await state.set_state(ConversationState.chatting)
 
     welcome_message = (
-        "<b>Привет!</b> 👋 Я помогу тебе найти идеи для <i>вайб-кодинга</i> в твоей нише. "
-        "Расскажи, чем ты занимаешься — какая у тебя сфера или экспертиза?"
+        "Привет! 👋 Я — AI-генератор идей для вайб-кодинга.\n\n"
+        "Подберу тебе 3-5 проектов, которые ты сможешь создать сам, "
+        "без программиста — за пару вечеров.\n\n"
+        "Напиши свою нишу или чем занимаешься — и я подберу идеи под тебя."
     )
 
     await message.answer(welcome_message, parse_mode="HTML")
@@ -119,6 +139,50 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         message="/start",
         response=welcome_message
     )
+
+
+@dp.callback_query(F.data.startswith("idea_"))
+async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext) -> None:
+    """Обработчик нажатия кнопок выбора идеи 💡."""
+    idea_num = callback.data.split("_")[1]
+    await callback.answer()
+
+    user_message = f"Расскажи подробнее об идее {idea_num}"
+
+    # Получаем историю диалога
+    data = await state.get_data()
+    history = data.get("history", [])
+
+    try:
+        thinking_msg = await callback.message.answer(
+            "Так, тут нужно <i>подумать</i>, дай мне немного времени... 🤔",
+            parse_mode="HTML"
+        )
+        await callback.message.bot.send_chat_action(
+            chat_id=callback.message.chat.id, action="typing"
+        )
+
+        response = await llm_client.get_response(user_message, history)
+        await thinking_msg.delete()
+        await callback.message.answer(response, parse_mode="HTML")
+
+        # Обновляем историю
+        history.append({"role": "user", "content": user_message})
+        history.append({"role": "assistant", "content": response})
+        await state.update_data(history=history[-10:])
+
+        log_conversation(
+            user_id=callback.from_user.id,
+            username=callback.from_user.username,
+            message=user_message,
+            response=response
+        )
+    except LLMError as e:
+        if "429" in str(e):
+            error_message = "<b>Упс, слишком много запросов!</b> Подожди минутку и попробуй снова ⏱️"
+        else:
+            error_message = "<b>Что-то пошло не так</b>, попробуй ещё раз через минуту 🔄"
+        await callback.message.answer(error_message, parse_mode="HTML")
 
 
 @dp.message(F.text)
@@ -155,19 +219,25 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
         # Удаляем сообщение "думаю..."
         await thinking_msg.delete()
 
-        # Проверяем, нужна ли кнопка ВАЙБС (если в ответе есть идеи)
-        if "ВАЙБС" in response and "Хочешь реализовать" in response:
-            # Сначала отправляем картинку из локального файла
+        # Проверяем, есть ли в ответе идеи (маркер — "Какая идея зацепила")
+        if "Какая идея зацепила" in response:
+            # 1. Картинка
             photo_path = os.path.join(os.path.dirname(__file__), "vibes_image.jpg")
             photo = FSInputFile(photo_path)
             await message.answer_photo(photo=photo)
-            # Потом отправляем текст с идеями и кнопкой
-            await message.answer(response, parse_mode="HTML", reply_markup=create_vibes_button())
-            
-            # Запускаем отложенную задачу для отправки ссылки на эфир через 1 минуту
+            # 2. Текст идей с кнопками выбора 💡
+            await message.answer(
+                response, parse_mode="HTML",
+                reply_markup=create_idea_buttons()
+            )
+            # 3. Продающий блок — отдельное сообщение
+            await message.answer(
+                VIBES_SALES_TEXT, parse_mode="HTML",
+                reply_markup=create_vibes_button()
+            )
+            # 4. Ссылка на стрим через 60 сек
             asyncio.create_task(send_live_stream_link(message.chat.id, delay_seconds=60))
         else:
-            # Отправляем ответ без кнопки
             await message.answer(response, parse_mode="HTML")
 
         # Обновляем историю диалога
