@@ -83,6 +83,31 @@ def create_idea_buttons(count: int = 4) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[buttons])
 
 
+THINKING_STAGES = [
+    "Анализирую твою нишу... 🔍",
+    "Подбираю идеи под тебя... 💡",
+    "Оцениваю потенциал проектов... 📊",
+    "Формулирую рекомендации... ✍️",
+    "Почти готово... ✨",
+]
+
+
+async def animate_thinking(message: types.Message, interval: float = 3.0):
+    """Циклически меняет текст сообщения, пока LLM думает."""
+    try:
+        stage = 0
+        while True:
+            await asyncio.sleep(interval)
+            text = THINKING_STAGES[stage % len(THINKING_STAGES)]
+            try:
+                await message.edit_text(text, parse_mode="HTML")
+            except Exception:
+                pass
+            stage += 1
+    except asyncio.CancelledError:
+        pass
+
+
 VIBES_SALES_TEXT = (
     "🚀 <b>Хочешь реализовать одну из этих идей?</b>\n\n"
     "На курсе <b>ВАЙБС</b> ты за 4 недели создашь свой проект "
@@ -164,6 +189,7 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
         "Так, тут нужно <i>подумать</i>, дай мне немного времени... 🤔",
         parse_mode="HTML"
     )
+    animation_task = asyncio.create_task(animate_thinking(thinking_msg))
 
     try:
         await callback.message.bot.send_chat_action(
@@ -171,6 +197,7 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
         )
 
         response = await llm_client.get_response(user_message, history)
+        animation_task.cancel()
         await thinking_msg.delete()
 
         # Пробуем отправить с HTML, если не получится — без разметки
@@ -191,6 +218,7 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
             response=response
         )
     except Exception as e:
+        animation_task.cancel()
         await thinking_msg.delete()
         error_logger.error(f"callback: {type(e).__name__}: {e}")
         await callback.message.answer(
@@ -214,11 +242,12 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
     data = await state.get_data()
     history = data.get("history", [])
 
-    # Отправляем сообщение "думаю..."
+    # Отправляем сообщение "думаю..." и запускаем анимацию
     thinking_msg = await message.answer(
         "Так, тут нужно <i>подумать</i>, дай мне немного времени... 🤔",
         parse_mode="HTML"
     )
+    animation_task = asyncio.create_task(animate_thinking(thinking_msg))
 
     try:
         # Отправляем индикатор набора текста
@@ -230,7 +259,8 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
         # Получаем ответ от LLM
         response = await llm_client.get_response(user_message, history)
 
-        # Удаляем сообщение "думаю..."
+        # Останавливаем анимацию и удаляем сообщение "думаю..."
+        animation_task.cancel()
         await thinking_msg.delete()
 
         # Проверяем, есть ли в ответе идеи (маркер — "Какая идея зацепила")
@@ -278,6 +308,7 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
         )
 
     except Exception as e:
+        animation_task.cancel()
         await thinking_msg.delete()
         error_logger.error(f"message: {type(e).__name__}: {e}")
 
