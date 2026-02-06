@@ -259,15 +259,14 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
         # Получаем ответ от LLM
         response = await llm_client.get_response(user_message, history)
 
-        # Останавливаем анимацию и удаляем сообщение "думаю..."
-        animation_task.cancel()
-        await thinking_msg.delete()
-
         # Проверяем, есть ли в ответе идеи (маркер — "Какая идея зацепила")
         if "Какая идея зацепила" in response:
             # 1. Картинка
             photo_path = os.path.join(os.path.dirname(__file__), "vibes_image.jpg")
             photo = FSInputFile(photo_path)
+            # Останавливаем анимацию прямо перед отправкой ответа
+            animation_task.cancel()
+            await thinking_msg.delete()
             await message.answer_photo(photo=photo)
             # 2. Текст идей с кнопками выбора 💡
             try:
@@ -287,6 +286,8 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
             # 4. Ссылка на стрим через 1 час
             asyncio.create_task(send_live_stream_link(message.chat.id, delay_seconds=3600))
         else:
+            animation_task.cancel()
+            await thinking_msg.delete()
             try:
                 await message.answer(response, parse_mode="HTML")
             except Exception:
