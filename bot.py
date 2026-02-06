@@ -185,6 +185,7 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
         )
     except Exception as e:
         await thinking_msg.delete()
+        print(f"❌ LLM Error (callback): {type(e).__name__}: {e}")
         if "429" in str(e):
             error_message = "<b>Упс, слишком много запросов!</b> Подожди минутку и попробуй снова ⏱️"
         else:
@@ -272,6 +273,7 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
 
     except Exception as e:
         await thinking_msg.delete()
+        print(f"❌ LLM Error (message): {type(e).__name__}: {e}")
         if "429" in str(e):
             error_message = "<b>Упс, слишком много запросов!</b> Подожди минутку и попробуй снова ⏱️"
         else:
