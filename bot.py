@@ -198,13 +198,17 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
 
         response = await llm_client.get_response(user_message, history)
         animation_task.cancel()
-        await thinking_msg.delete()
-
-        # Пробуем отправить с HTML, если не получится - без разметки
         try:
-            await callback.message.answer(response, parse_mode="HTML")
+            await thinking_msg.edit_text(response, parse_mode="HTML")
         except Exception:
-            await callback.message.answer(response)
+            try:
+                await thinking_msg.delete()
+            except Exception:
+                pass
+            try:
+                await callback.message.answer(response, parse_mode="HTML")
+            except Exception:
+                await callback.message.answer(response)
 
         # Обновляем историю
         history.append({"role": "user", "content": user_message})
@@ -261,12 +265,9 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
 
         # Проверяем, есть ли в ответе идеи (маркер - "Какая идея зацепила")
         if "Какая идея зацепила" in response:
-            # 1. Картинка
+            # 1. Картинка (анимация ещё крутится — пользователь видит прогресс)
             photo_path = os.path.join(os.path.dirname(__file__), "vibes_image.jpg")
             photo = FSInputFile(photo_path)
-            # Останавливаем анимацию прямо перед отправкой ответа
-            animation_task.cancel()
-            await thinking_msg.delete()
             await message.answer_photo(photo=photo)
             # 2. Текст идей с кнопками выбора 💡
             try:
@@ -283,15 +284,27 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
                 VIBES_SALES_TEXT, parse_mode="HTML",
                 reply_markup=create_vibes_button()
             )
-            # 4. Ссылка на стрим через 1 час
+            # 4. Убираем анимацию — ответ уже доставлен
+            animation_task.cancel()
+            try:
+                await thinking_msg.delete()
+            except Exception:
+                pass
+            # 5. Ссылка на стрим через 1 час
             asyncio.create_task(send_live_stream_link(message.chat.id, delay_seconds=3600))
         else:
             animation_task.cancel()
-            await thinking_msg.delete()
             try:
-                await message.answer(response, parse_mode="HTML")
+                await thinking_msg.edit_text(response, parse_mode="HTML")
             except Exception:
-                await message.answer(response)
+                try:
+                    await thinking_msg.delete()
+                except Exception:
+                    pass
+                try:
+                    await message.answer(response, parse_mode="HTML")
+                except Exception:
+                    await message.answer(response)
 
         # Обновляем историю диалога
         history.append({"role": "user", "content": user_message})
