@@ -139,7 +139,7 @@ async def send_live_stream_link(chat_id: int, delay_seconds: int = 60) -> None:
         f"▶️ {LIVE_STREAM_URL}"
     )
     
-    await bot.send_message(chat_id=chat_id, text=message)
+    await bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
 
 
 @dp.message(Command("start"))
