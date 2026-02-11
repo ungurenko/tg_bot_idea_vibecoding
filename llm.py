@@ -79,12 +79,14 @@ class OpenRouterClient:
                 if "choices" in data and len(data["choices"]) > 0:
                     return data["choices"][0]["message"]["content"]
                 else:
+                    print(f"❌ Unexpected API response: {str(data)[:500]}")
                     raise LLMError("Неожиданный формат ответа от API")
 
         except httpx.TimeoutException:
             raise LLMError("Превышено время ожидания ответа от LLM")
         except httpx.HTTPStatusError as e:
             body = e.response.text[:200]
+            print(f"❌ HTTP error from OpenRouter: {e.response.status_code} {body}")
             raise LLMError(f"HTTP {e.response.status_code}: {body}")
         except httpx.RequestError as e:
             raise LLMError(f"Ошибка соединения: {str(e)}")

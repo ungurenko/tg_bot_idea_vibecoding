@@ -251,6 +251,7 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
         animation_task.cancel()
         await thinking_msg.delete()
         error_logger.error(f"callback: {type(e).__name__}: {e}")
+        print(f"❌ LLM ERROR (callback): {type(e).__name__}: {e}")
         await callback.message.answer(
             "⚠️ Произошла ошибка при генерации ответа. Попробуйте ещё раз.",
             parse_mode="HTML"
@@ -358,6 +359,7 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
         animation_task.cancel()
         await thinking_msg.delete()
         error_logger.error(f"message: {type(e).__name__}: {e}")
+        print(f"❌ LLM ERROR (message): {type(e).__name__}: {e}")
 
         await message.answer(
             "⚠️ Произошла ошибка при генерации ответа. Попробуйте ещё раз.",
