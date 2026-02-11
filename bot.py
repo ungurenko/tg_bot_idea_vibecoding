@@ -223,6 +223,7 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
         )
 
         response = await llm_client.get_response(user_message, history)
+        print(f"✅ LLM response (callback): len={len(response)}, preview={response[:150]!r}")
         animation_task.cancel()
         try:
             await thinking_msg.edit_text(response, parse_mode="HTML")
@@ -249,7 +250,10 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
         )
     except Exception as e:
         animation_task.cancel()
-        await thinking_msg.delete()
+        try:
+            await thinking_msg.delete()
+        except Exception:
+            pass
         error_logger.error(f"callback: {type(e).__name__}: {e}")
         print(f"❌ LLM ERROR (callback): {type(e).__name__}: {e}")
         await callback.message.answer(
@@ -296,6 +300,7 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
 
         # Получаем ответ от LLM
         response = await llm_client.get_response(user_message, history)
+        print(f"✅ LLM response: len={len(response)}, preview={response[:150]!r}")
 
         # Проверяем, есть ли в ответе идеи (маркер - "Какая идея зацепила")
         if "Какая идея зацепила" in response:
@@ -357,7 +362,10 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
 
     except Exception as e:
         animation_task.cancel()
-        await thinking_msg.delete()
+        try:
+            await thinking_msg.delete()
+        except Exception:
+            pass
         error_logger.error(f"message: {type(e).__name__}: {e}")
         print(f"❌ LLM ERROR (message): {type(e).__name__}: {e}")
 

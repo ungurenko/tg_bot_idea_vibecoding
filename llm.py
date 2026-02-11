@@ -73,6 +73,7 @@ class OpenRouterClient:
                 )
 
                 response.raise_for_status()
+                print(f"✅ OpenRouter OK: status={response.status_code}, model={self.model}")
                 data = response.json()
 
                 # Извлекаем ответ из response
