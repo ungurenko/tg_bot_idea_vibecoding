@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+from datetime import date
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -63,6 +64,24 @@ llm_client = OpenRouterClient(api_key=OPENROUTER_API_KEY)
 class ConversationState(StatesGroup):
     """Состояния диалога."""
     chatting = State()
+
+
+# Лимит запросов к LLM на пользователя в день
+DAILY_REQUEST_LIMIT = 5
+user_request_counts: dict = {}
+
+
+def check_and_increment_limit(user_id: int) -> bool:
+    """Проверяет лимит запросов. Возвращает True если запрос разрешён."""
+    today = str(date.today())
+    user_data = user_request_counts.get(user_id)
+    if not user_data or user_data["date"] != today:
+        user_request_counts[user_id] = {"date": today, "count": 1}
+        return True
+    if user_data["count"] >= DAILY_REQUEST_LIMIT:
+        return False
+    user_data["count"] += 1
+    return True
 
 
 def create_vibes_button() -> InlineKeyboardMarkup:
@@ -179,6 +198,13 @@ async def handle_idea_callback(callback: types.CallbackQuery, state: FSMContext)
     idea_num = callback.data.split("_")[1]
     await callback.answer()
 
+    if not check_and_increment_limit(callback.from_user.id):
+        await callback.message.answer(
+            "⚠️ Вы достигли лимита — <b>5 запросов в день</b>. Приходите завтра!",
+            parse_mode="HTML"
+        )
+        return
+
     user_message = f"Расскажи подробнее об идее {idea_num}"
 
     # Получаем историю диалога
@@ -241,6 +267,13 @@ async def handle_message(message: types.Message, state: FSMContext) -> None:
         state: Состояние FSM
     """
     user_message = message.text
+
+    if not check_and_increment_limit(message.from_user.id):
+        await message.answer(
+            "⚠️ Вы достигли лимита — <b>5 запросов в день</b>. Приходите завтра!",
+            parse_mode="HTML"
+        )
+        return
 
     # Получаем историю диалога из состояния
     data = await state.get_data()

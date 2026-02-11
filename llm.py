@@ -22,7 +22,7 @@ class OpenRouterClient:
         """
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model = "google/gemini-3-flash-preview"
+        self.model = "google/gemini-2.5-flash-lite"
         self.timeout = 120.0
 
     async def get_response(self, user_message: str, history: List[Dict[str, str]] = None) -> str:
